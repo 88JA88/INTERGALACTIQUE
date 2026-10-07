@@ -187,6 +187,13 @@
       update();
       return;
     }
+    const target = state.pieces.get(targetId);
+    if (target?.owner && target.owner !== state.activePlayer) {
+      statusTone = target.owner;
+      state.lastMessage = pointValueText(target);
+      update();
+      return;
+    }
     finishAction(GameRules.performMove(state, state.selectedId, targetId));
   }
   function pointValueText(piece) {

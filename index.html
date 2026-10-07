@@ -3,14 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1930">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>INTERGALACTIQUE — prototype de réseaux</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="barre-haute">
     <div class="marque">
       <img class="logo-ja" src="logo-ja.svg" alt="Logo JA">
-      <h1>INTERGALACTIQUE</h1>
+      <h1>Intergalactique</h1>
     </div>
     <div class="etat-partie">
       <p id="statut" role="status">Préparation de la galaxie…</p>
@@ -93,5 +98,10 @@
   <script src="renderer.js"></script>
   <script src="ai.js"></script>
   <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
+    }
+  </script>
 </body>
 </html>
