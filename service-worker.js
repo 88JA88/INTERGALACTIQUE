@@ -1,4 +1,4 @@
-const CACHE_NAME = 'intergalactique-pwa-v2';
+const CACHE_NAME = 'intergalactique-pwa-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const APP_SHELL = [
   './renderer.js',
   './ai.js',
   './app.js',
+  './pwa.js',
   './logo-ja.svg',
   './icon-192.png',
   './icon-512.png'
@@ -17,6 +18,7 @@ const APP_SHELL = [
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
+  // Cette activation automatique ne sert qu'à migrer la première version PWA.
   self.skipWaiting();
 });
 
@@ -31,4 +33,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
