@@ -2,7 +2,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; }
 .barre-haute { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 15px 24px; border-bottom: 1px solid #263a57; background: #0b1930; }
-h1 { margin: 0; font-size: 23px; letter-spacing: .07em; } h1 span { color: #91a3be; font-size: 13px; font-weight: normal; letter-spacing: normal; } #statut { margin: 6px 0 0; color: #b9c9df; font-size: 14px; }
+.marque { display: grid; justify-items: center; gap: 4px; } .logo-ja { width: 48px; height: 48px; padding: 4px; border-radius: 5px; background: #f4f8ff; } h1 { margin: 0; font-size: 16px; letter-spacing: .07em; } .etat-partie { flex: 1; } #statut { margin: 6px 0 0; color: #b9c9df; font-size: 14px; }
+#statut.valeur-blue, #statut.valeur-red, #statut.valeur-green { font-size: 18px; font-weight: bold; } #statut.valeur-blue { color: #62b7ff; } #statut.valeur-red { color: #ff7477; } #statut.valeur-green { color: #5bd879; }
 .scores { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 17px; font-weight: bold; } .bleu, .blue { color: #62b7ff; } .rouge, .red { color: #ff7477; }
 main { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; max-width: 1400px; margin: 0 auto; padding: 18px; }
 .panneau { align-self: start; padding: 16px; border: 1px solid #2a4160; border-radius: 9px; background: #0b1930; } .panneau h2 { margin: 0; font-size: 17px; } .panneau-entete { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; } #evaluer-campagne { padding: 6px 8px; font-size: 11px; }

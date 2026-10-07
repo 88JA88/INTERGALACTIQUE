@@ -16,6 +16,14 @@
     return otherCornerA?.owner === source.owner && otherCornerB?.owner === source.owner;
   }
 
+  function centerDiagonalTarget(state, source, targetId) {
+    if (source.type !== 'center') return null;
+    const [x, y] = targetId.split(':').map(Number);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= state.config.width || y >= state.config.height) return null;
+    if (Math.abs(x - source.x) !== 1 || Math.abs(y - source.y) !== 1) return null;
+    return state.pieces.get(targetId) || { id: targetId, x, y, type: 'empty', owner: null };
+  }
+
   function createStation(state, source, destination) {
     const station = addPiece(state, { id: destination.id, x: destination.x, y: destination.y, type: 'station', owner: source.owner, initialOwner: null, created: true });
     addLink(state, source.id, station.id, source.owner);
@@ -102,17 +110,20 @@
     const battle = calculateBattle(state, source, target);
     const sourceLinkedToCenter = NetworkEngine.isLinkedToCenter(state, source.id);
     const targetLinkedToCenter = NetworkEngine.isLinkedToCenter(state, target.id);
-    const label = `${battle.attackType === 'network' ? 'Réseau' : 'Attaches'} contre ${battle.defenseType === 'network' ? 'réseau' : 'attaches'}`;
+    const sourceOwner = source.owner;
+    const targetOwner = target.owner;
+    const label = `${battle.attackType === 'network' ? 'Réseau' : 'Liaisons spatiales'} contre ${battle.defenseType === 'network' ? 'réseau' : 'liaisons spatiales'}`;
     if (battle.attack <= battle.defense) {
       removeOldAttachments(state, source);
       source.owner = target.owner;
       const removedStations = removeOrphanStations(state);
       const disappearance = removedStations.length ? ` ${removedStations.length} Station${removedStations.length > 1 ? 's' : ''} isolée${removedStations.length > 1 ? 's' : ''} ${removedStations.length > 1 ? 'disparaissent' : 'disparaît'}.` : '';
-      const winner = source.type === 'center' && targetLinkedToCenter ? target.owner : null;
+      const winnerByCenterAbsence = !NetworkEngine.hasCenter(state, sourceOwner);
+      const winner = source.type === 'center' && (targetLinkedToCenter || winnerByCenterAbsence) ? target.owner : null;
       const centerCapture = source.type === 'center'
-        ? winner ? ' Le Centre galactique attaquant est capturé par un réseau relié à son Centre.' : ' Le Centre galactique attaquant est capturé, mais le réseau vainqueur n’est pas relié à son Centre : la partie continue.'
+        ? winner ? targetLinkedToCenter ? ' Le Centre galactique attaquant est capturé par un réseau relié à son Centre.' : ' Le Centre galactique attaquant est capturé : son camp ne possède plus de Centre.' : ' Le Centre galactique attaquant est capturé, mais le réseau vainqueur n’est pas relié à son Centre : la partie continue.'
         : '';
-      return { ok: true, winner, visualEffect: { owner: target.owner, x: target.x, y: target.y }, message: `Attaque perdue — ${label} : ${battle.attack} contre ${battle.defense}. La possession attaquante est conquise et perd ses attaches.${centerCapture}${disappearance}` };
+      return { ok: true, winner, visualEffect: { owner: target.owner, x: target.x, y: target.y }, message: `Attaque perdue — ${label} : ${battle.attack} contre ${battle.defense}. La possession attaquante est conquise et perd ses liaisons spatiales.${centerCapture}${disappearance}` };
     }
     removeOldAttachments(state, target);
     target.owner = source.owner;
@@ -120,27 +131,30 @@
     addLink(state, source.id, target.id, source.owner);
     const removedStations = removeOrphanStations(state);
     const disappearance = removedStations.length ? ` ${removedStations.length} Station${removedStations.length > 1 ? 's' : ''} isolée${removedStations.length > 1 ? 's' : ''} ${removedStations.length > 1 ? 'disparaissent' : 'disparaît'}.` : '';
-    const winner = target.type === 'center' && sourceLinkedToCenter ? source.owner : null;
+    const winnerByCenterAbsence = !NetworkEngine.hasCenter(state, targetOwner);
+    const winner = target.type === 'center' && (sourceLinkedToCenter || winnerByCenterAbsence) ? source.owner : null;
     const centerCapture = target.type === 'center'
-      ? winner ? ' Centre galactique adverse capturé par un réseau relié à son Centre.' : ' Centre galactique adverse capturé, mais le réseau attaquant n’est pas relié à son Centre : la partie continue.'
+      ? winner ? sourceLinkedToCenter ? ' Centre galactique adverse capturé par un réseau relié à son Centre.' : ' Centre galactique adverse capturé : son camp ne possède plus de Centre.' : ' Centre galactique adverse capturé, mais le réseau attaquant n’est pas relié à son Centre : la partie continue.'
       : '';
-    return { ok: true, winner, visualEffect: { owner: source.owner, x: target.x, y: target.y }, message: `Victoire — ${label} : ${battle.attack} contre ${battle.defense}. Les anciennes attaches sont supprimées.${centerCapture}${disappearance}` };
+    return { ok: true, winner, visualEffect: { owner: source.owner, x: target.x, y: target.y }, message: `Victoire — ${label} : ${battle.attack} contre ${battle.defense}. Les anciennes liaisons spatiales sont supprimées.${centerCapture}${disappearance}` };
   }
 
   function performMove(state, sourceId, targetId) {
     const source = state.pieces.get(sourceId);
     if (!source || source.owner !== state.activePlayer) return { ok: false, message: 'Choisissez une possession de votre camp.' };
     const target = neighbours(state, source).find(candidate => candidate.id === targetId);
-    if (!target) {
+    const centerDiagonal = !target && centerDiagonalTarget(state, source, targetId);
+    if (!target && !centerDiagonal) {
       const diagonalTarget = state.pieces.get(targetId);
       if (canConnectDiagonalSquare(state, source, diagonalTarget)) return connectAllies(state, source, diagonalTarget);
       return { ok: false, message: 'Choisissez un voisin orthogonal, ou une diagonale d’un carré allié complet.' };
     }
-    if (target.type === 'empty') return createStation(state, source, target);
-    if (target.owner === null && target.type === 'planet') return conquerNeutralPlanet(state, source, target);
-    if (target.owner === source.owner) return connectAllies(state, source, target);
-    return resolveAttack(state, source, target);
+    const destination = target || centerDiagonal;
+    if (destination.type === 'empty') return createStation(state, source, destination);
+    if (destination.owner === null && destination.type === 'planet') return conquerNeutralPlanet(state, source, destination);
+    if (destination.owner === source.owner) return connectAllies(state, source, destination);
+    return resolveAttack(state, source, destination);
   }
 
-  globalThis.GameRules = Object.freeze({ neighbours, canConnectDiagonalSquare, moveCenter, performMove, conquerNeutralPlanet, calculateBattle, connectAllies, removeOrphanStations, resolveAttack });
+  globalThis.GameRules = Object.freeze({ neighbours, canConnectDiagonalSquare, centerDiagonalTarget, moveCenter, performMove, conquerNeutralPlanet, calculateBattle, connectAllies, removeOrphanStations, resolveAttack });
 })();

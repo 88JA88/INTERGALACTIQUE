@@ -64,6 +64,9 @@
     const network = connectedNetwork(state, pieceId);
     return network.pieces.some(piece => piece.type === 'center' && piece.owner === network.owner);
   }
+  function hasCenter(state, owner) {
+    return [...state.pieces.values()].some(piece => piece.type === 'center' && piece.owner === owner);
+  }
   function attackerStationPower(state, pieceId) {
     const network = connectedNetwork(state, pieceId);
     if (isLinkedToCenter(state, pieceId)) return { type: 'network', value: network.value };
@@ -86,5 +89,5 @@
     }, {});
   }
 
-  globalThis.NetworkEngine = Object.freeze({ attachments, connectedNetwork, pieceValue, networkValue, attachmentDetails, attachmentsValue, attachmentCount, isLinkedToCenter, attackerStationPower, defenderPlanetPower, battleAttachmentCount, potentialScores });
+  globalThis.NetworkEngine = Object.freeze({ attachments, connectedNetwork, pieceValue, networkValue, attachmentDetails, attachmentsValue, attachmentCount, isLinkedToCenter, hasCenter, attackerStationPower, defenderPlanetPower, battleAttachmentCount, potentialScores });
 })();

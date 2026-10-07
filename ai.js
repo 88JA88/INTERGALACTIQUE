@@ -122,7 +122,7 @@
     }
     const battle = GameRules.calculateBattle(state, source, target);
     if (battle.attack <= battle.defense) return null;
-    if (target.type === 'center' && NetworkEngine.isLinkedToCenter(state, source.id)) return 200000;
+    if (target.type === 'center') return 200000;
     const detached = detachedFromCenterIfRemoved(state, target);
     if (detached) return 30000 + detached * 100 + defense;
     return 1000 + destroyedAttachments(state, target) * 100 + (battle.attack - battle.defense) * 10 + defense;
@@ -138,10 +138,21 @@
     const ownedPieces = [...state.pieces.values()].filter(piece => piece.owner === player);
     ownedPieces.forEach(source => {
       GameRules.neighbours(state, source).forEach(target => addMove(actions, state, source, target));
-      ownedPieces.forEach(target => {
-        if (target.id === source.id || !GameRules.canConnectDiagonalSquare(state, source, target)) return;
-        addMove(actions, state, source, target);
-      });
+      if (source.type === 'center') {
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([deltaX, deltaY]) => {
+          const x = source.x + deltaX;
+          const y = source.y + deltaY;
+          if (x < 0 || y < 0 || x >= state.config.width || y >= state.config.height) return;
+          const target = state.pieces.get(key(x, y)) || { id: key(x, y), x, y, type: 'empty', owner: null };
+          addMove(actions, state, source, target);
+        });
+      }
+      if (source.type !== 'center') {
+        ownedPieces.forEach(target => {
+          if (target.id === source.id || !GameRules.canConnectDiagonalSquare(state, source, target)) return;
+          addMove(actions, state, source, target);
+        });
+      }
     });
 
     // Face à une menace immédiate, un déplacement vers une case qui n'est plus

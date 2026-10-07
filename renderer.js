@@ -4,7 +4,6 @@
   const svg = document.getElementById('grille');
   const GRID_STEP = 100;
   const MARGIN = 55;
-  const LONG_PRESS_MS = 400;
   const CONSTELLATIONS = [
     { name: 'Grande Ourse', width: 6, height: 3, points: [[0, 0], [1, 0], [2, 1], [3, 2], [4, 1], [5, 1], [5, 2]] },
     { name: 'Ceinture d’Orion', width: 2, height: 0, points: [[0, 0], [1, 0], [2, 0]] }
@@ -221,6 +220,11 @@
         event.stopPropagation();
         globalThis.IntergalactiqueApp.showNetworkValue(link.id);
       });
+      hitZone.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        globalThis.IntergalactiqueApp.showNetworkValue(link.id);
+      });
       links.append(hitZone);
       links.append(element('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'link-visible', stroke: COLORS[link.owner] }));
     });
@@ -239,33 +243,35 @@
         group.append(element('circle', { r: 16, fill: 'none', stroke: color })); group.append(element('circle', { r: 10, fill: 'none', stroke: color })); group.append(element('circle', { r: 4, fill: color }));
       }
       if (piece.type === 'station') group.append(element('circle', { r: 8, fill: color }));
-      let longPressTimer = null;
-      let draggingCenter = false;
+      let draggingAttachment = false;
+      let dragStart = null;
       group.addEventListener('pointerdown', event => {
         event.stopPropagation();
         group.classList.add('pressed');
         group.setPointerCapture(event.pointerId);
-        if (piece.type === 'center') {
-          longPressTimer = setTimeout(() => {
-            draggingCenter = true;
-            group.classList.add('dragging-center');
-          }, LONG_PRESS_MS);
-        }
+        draggingAttachment = event.button === 0 && globalThis.IntergalactiqueApp.shouldUseDragDrop(event.pointerType);
+        dragStart = { x: event.clientX, y: event.clientY };
+      });
+      group.addEventListener('pointermove', event => {
+        if (!dragStart) return;
+        if (Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) > 6) group.dataset.dragged = 'true';
       });
       group.addEventListener('pointerup', event => {
-        clearTimeout(longPressTimer);
         group.classList.remove('pressed');
-        if (!draggingCenter) return;
-        draggingCenter = false;
-        group.classList.remove('dragging-center');
+        const dragged = group.dataset.dragged === 'true';
+        delete group.dataset.dragged;
+        dragStart = null;
+        if (!draggingAttachment || !dragged) { draggingAttachment = false; return; }
+        draggingAttachment = false;
         group.dataset.ignoreClick = 'true';
         const targetId = crossingAtPointer(state, event);
-        if (targetId) globalThis.IntergalactiqueApp.moveCenter(piece.id, targetId);
+        if (targetId) globalThis.IntergalactiqueApp.dragPiece(piece.id, targetId);
       });
       group.addEventListener('pointercancel', () => {
-        clearTimeout(longPressTimer);
-        draggingCenter = false;
-        group.classList.remove('pressed', 'dragging-center');
+        draggingAttachment = false;
+        dragStart = null;
+        delete group.dataset.dragged;
+        group.classList.remove('pressed');
       });
       group.addEventListener('click', event => {
         event.stopPropagation();
@@ -282,6 +288,12 @@
           globalThis.IntergalactiqueApp.showStationValue(piece.id);
         });
       }
+      if (piece.type === 'center') {
+        group.addEventListener('contextmenu', event => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+      }
       pieces.append(group);
     });
     svg.append(pieces);
@@ -291,7 +303,10 @@
       const p = point(state, { x, y }); const node = element('g', { class: 'crossing', 'data-id': `${x}:${y}` });
       node.append(element('circle', { cx: p.x, cy: p.y, r: 18, class: 'zone-selection', fill: 'transparent' }));
       node.append(element('circle', { cx: p.x, cy: p.y, r: 4, class: 'point-visible' }));
-      node.addEventListener('click', event => { event.stopPropagation(); globalThis.IntergalactiqueApp.selectCrossing(`${x}:${y}`); }); crossings.append(node);
+      node.addEventListener('click', event => {
+        event.stopPropagation();
+        if (globalThis.IntergalactiqueApp.hasCenterJump() || !globalThis.IntergalactiqueApp.shouldUseDragDrop(event.pointerType)) globalThis.IntergalactiqueApp.selectCrossing(`${x}:${y}`);
+      }); crossings.append(node);
     }
     svg.append(crossings);
     drawConstellationStars(state);

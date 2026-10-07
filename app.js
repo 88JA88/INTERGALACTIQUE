@@ -3,6 +3,8 @@
   let state;
   let campaignEnded = false;
   let aiTimer = null;
+  let centerJumpId = null;
+  let statusTone = null;
   const status = document.getElementById('statut');
   const activeLabel = document.getElementById('joueur-actif');
   function number(id) { return Number(document.getElementById(id).value); }
@@ -67,6 +69,7 @@
     document.getElementById('score-blue').value = scores.blue; document.getElementById('score-red').value = scores.red;
     document.getElementById('coups-restants').value = state.config.movesPerTurn - state.movesPlayed;
     activeLabel.textContent = state.activePlayer === 'blue' ? 'Zarkon de Véga' : 'Kryssar d’Andromède'; activeLabel.className = state.activePlayer;
+    status.className = statusTone ? `valeur-${statusTone}` : '';
     status.textContent = state.lastMessage || `Au tour de ${activeLabel.textContent}.`;
     const computerTurn = isComputerTurn();
     document.getElementById('passer-tour').disabled = campaignEnded || computerTurn;
@@ -85,6 +88,8 @@
   }
   function passTurn(message = 'Tour passé.') {
     state.selectedId = null;
+    centerJumpId = null;
+    statusTone = null;
     state.activePlayer = state.activePlayer === 'blue' ? 'red' : 'blue';
     state.movesPlayed = 0;
     state.lastMessage = message;
@@ -103,6 +108,8 @@
   }
   function newGalaxy() {
     clearTimeout(aiTimer); aiTimer = null;
+    centerJumpId = null;
+    statusTone = null;
     GameRenderer.resetCometCycle();
     const config = configFromForm(); const error = validConfig(config); if (error) { status.textContent = error; return; }
     try {
@@ -116,6 +123,8 @@
   }
   function finishAction(result) {
     state.selectedId = null;
+    centerJumpId = null;
+    statusTone = null;
     state.lastMessage = result.message;
     if (result.ok) {
       GameRenderer.startCometCycle();
@@ -158,11 +167,77 @@
   function choose(targetId) {
     if (campaignEnded) return;
     if (isComputerTurn()) { state.lastMessage = 'Kryssar joue actuellement.'; update(); return; }
-    if (!state.selectedId) { const piece = state.pieces.get(targetId); if (!piece || piece.owner !== state.activePlayer) { state.lastMessage = 'Choisissez une planète, une station ou votre Centre galactique.'; update(); return; } state.selectedId = piece.id; state.lastMessage = 'Choisissez un croisement voisin ou une cible adverse autorisée.'; update(); return; }
+    if (centerJumpId) {
+      const sourceId = centerJumpId;
+      centerJumpId = null;
+      finishAction(GameRules.moveCenter(state, sourceId, targetId));
+      return;
+    }
+    if (!state.selectedId) {
+      const piece = state.pieces.get(targetId);
+      if (!piece || piece.owner !== state.activePlayer) {
+        statusTone = piece?.owner || (piece ? 'green' : null);
+        state.lastMessage = piece ? pointValueText(piece) : '';
+        update();
+        return;
+      }
+      state.selectedId = piece.id;
+      statusTone = piece.owner;
+      state.lastMessage = pointValueText(piece);
+      update();
+      return;
+    }
     finishAction(GameRules.performMove(state, state.selectedId, targetId));
   }
-  function selectPiece(id) { choose(id); }
+  function pointValueText(piece) {
+    const label = piece.type === 'center' ? 'Centre galactique' : piece.type === 'planet' ? 'Planète' : 'Station';
+    const owner = piece.owner === 'blue' ? 'bleu' : piece.owner === 'red' ? 'rouge' : 'verte';
+    const values = [NetworkEngine.pieceValue(state, piece)];
+    NetworkEngine.attachments(state, piece.id)
+      .filter(link => link.owner === piece.owner)
+      .map(link => state.pieces.get(link.a === piece.id ? link.b : link.a))
+      .filter(other => other?.owner === piece.owner)
+      .forEach(other => values.push(NetworkEngine.pieceValue(state, other)));
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return `${label} ${owner} — valeur du point : ${values.join(' + ')} = ${total}.`;
+  }
+  function selectPiece(id) {
+    const piece = state.pieces.get(id);
+    if (!state.selectedId && !centerJumpId && piece?.type === 'center' && piece.owner === state.activePlayer) {
+      armCenterJump(id);
+      return;
+    }
+    choose(id);
+  }
   function selectCrossing(id) { choose(id); }
+  function armCenterJump(centerId) {
+    if (campaignEnded || isComputerTurn()) return;
+    const center = state.pieces.get(centerId);
+    if (!center || center.type !== 'center' || center.owner !== state.activePlayer) {
+      state.lastMessage = center ? pointValueText(center) : '';
+      update();
+      return;
+    }
+    state.selectedId = null;
+    centerJumpId = centerId;
+    statusTone = center.owner;
+    state.lastMessage = `${pointValueText(center)} Pour un saut du Centre, cliquez sur un croisement libre voisin ou glissez pour créer une Station spatiale.`;
+    update();
+  }
+  function hasCenterJump() { return centerJumpId !== null; }
+  function shouldUseDragDrop(pointerType) {
+    const mode = document.getElementById('mode-interaction').value;
+    if (mode === 'drag') return true;
+    if (mode === 'selection') return false;
+    if (pointerType === 'touch') return false;
+    if (pointerType === 'mouse') return true;
+    return globalThis.matchMedia?.('(pointer: fine)').matches ?? false;
+  }
+  function dragPiece(sourceId, targetId) {
+    if (campaignEnded || sourceId === targetId) return;
+    if (isComputerTurn()) { state.lastMessage = 'Kryssar joue actuellement.'; update(); return; }
+    finishAction(GameRules.performMove(state, sourceId, targetId));
+  }
   function moveCenter(centerId, targetId) { if (!campaignEnded && !isComputerTurn()) finishAction(GameRules.moveCenter(state, centerId, targetId)); }
   function showNetworkValue(linkId) {
     const link = state.links.get(linkId);
@@ -170,21 +245,15 @@
     if (!link || !start) return;
     const network = NetworkEngine.connectedNetwork(state, start.id);
     const owner = network.owner === 'blue' ? 'bleu' : 'rouge';
-    state.lastMessage = `Segment ${owner} — valeur du réseau : ${network.value}.`;
+    statusTone = network.owner;
+    state.lastMessage = `Réseau ${owner} — valeur : ${network.value}.`;
     update();
   }
   function showStationValue(pieceId) {
     const station = state.pieces.get(pieceId);
     if (!station || station.type !== 'station') return;
-    const values = NetworkEngine.attachments(state, station.id)
-      .filter(link => link.owner === station.owner)
-      .map(link => state.pieces.get(link.a === station.id ? link.b : link.a))
-      .filter(piece => piece?.owner === station.owner)
-      .map(piece => NetworkEngine.pieceValue(state, piece));
-    const value = NetworkEngine.attachmentsValue(state, station.id);
-    const owner = station.owner === 'blue' ? 'bleue' : 'rouge';
-    const calculation = values.length ? `${values.join(' + ')} = ${value}` : '0';
-    state.lastMessage = `Station ${owner} — ${values.length} attache${values.length > 1 ? 's' : ''} : ${calculation}.`;
+    statusTone = station.owner;
+    state.lastMessage = pointValueText(station);
     update();
   }
   function finishCampaign() {
@@ -242,7 +311,7 @@
   document.getElementById('terminer-campagne').addEventListener('click', finishCampaign);
   document.getElementById('fermer-bilan').addEventListener('click', () => document.getElementById('decision-campagne').close());
   document.getElementById('passer-tour').addEventListener('click', () => { if (campaignEnded || isComputerTurn()) return; passTurn(); });
-  document.getElementById('effacer-selection').addEventListener('click', () => { state.selectedId = null; state.lastMessage = 'Sélection annulée.'; update(); });
-  globalThis.IntergalactiqueApp = Object.freeze({ selectPiece, selectCrossing, moveCenter, showNetworkValue, showStationValue });
+  document.getElementById('effacer-selection').addEventListener('click', () => { state.selectedId = null; centerJumpId = null; statusTone = null; state.lastMessage = 'Sélection annulée.'; update(); });
+  globalThis.IntergalactiqueApp = Object.freeze({ selectPiece, selectCrossing, armCenterJump, hasCenterJump, shouldUseDragDrop, dragPiece, moveCenter, showNetworkValue, showStationValue });
   newGalaxy();
 })();

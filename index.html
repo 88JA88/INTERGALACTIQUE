@@ -8,8 +8,11 @@
 </head>
 <body>
   <header class="barre-haute">
-    <div>
-      <h1>INTERGALACTIQUE <span>prototype du moteur</span></h1>
+    <div class="marque">
+      <img class="logo-ja" src="logo-ja.svg" alt="Logo JA">
+      <h1>INTERGALACTIQUE</h1>
+    </div>
+    <div class="etat-partie">
       <p id="statut" role="status">Préparation de la galaxie…</p>
     </div>
     <div class="scores" aria-label="Scores potentiels">
@@ -43,8 +46,16 @@
           <option value="two-players">Seul dans la galaxie</option>
         </select>
       </div>
+      <div class="mode-jeu">
+        <label for="mode-interaction">Interaction</label>
+        <select id="mode-interaction">
+          <option value="auto">Automatique</option>
+          <option value="drag">Glisser-déposer</option>
+          <option value="selection">Sélection</option>
+        </select>
+      </div>
       <button id="nouvelle-galaxie" type="button">Nouvelle galaxie</button>
-      <p class="aide">Cliquez une possession, puis un voisin. Une case libre crée une Station ; une possession alliée est reliée ; une possession adverse est attaquée. Une diagonale relie les coins opposés d’un carré allié complet.</p>
+      <p class="aide">En mode automatique, glissez une possession vers sa cible avec un pointeur fin ; avec un pointeur tactile, sélectionnez-la puis choisissez sa cible. Pour déplacer un Centre, cliquez-le puis cliquez un croisement libre voisin. Une case libre crée une Station ; une possession alliée est reliée ; une possession adverse est attaquée. Le Centre peut aussi agir sur ses voisins diagonaux ; les autres possessions ne relient une diagonale que si elles complètent un carré allié.</p>
     </aside>
 
     <section class="zone-jeu" aria-label="Grille galactique">
