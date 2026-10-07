@@ -69,7 +69,7 @@
     document.getElementById('score-blue').value = scores.blue; document.getElementById('score-red').value = scores.red;
     document.getElementById('coups-restants').value = state.config.movesPerTurn - state.movesPlayed;
     activeLabel.textContent = state.activePlayer === 'blue' ? 'Zarkon de Véga' : 'Kryssar d’Andromède'; activeLabel.className = state.activePlayer;
-    status.className = statusTone ? `valeur-${statusTone}` : '';
+    status.className = '';
     status.textContent = state.lastMessage || `Au tour de ${activeLabel.textContent}.`;
     const computerTurn = isComputerTurn();
     document.getElementById('passer-tour').disabled = campaignEnded || computerTurn;
@@ -227,7 +227,7 @@
     }
     state.selectedId = null;
     centerJumpId = centerId;
-    statusTone = center.owner;
+    statusTone = null;
     state.lastMessage = `${pointValueText(center)} Pour un saut du Centre, cliquez sur un croisement libre voisin ou glissez pour créer une Station spatiale.`;
     update();
   }

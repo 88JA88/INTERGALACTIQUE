@@ -65,6 +65,7 @@
 
     <section class="zone-jeu" aria-label="Grille galactique">
       <div class="outils">
+        <button id="attaque-defense" type="button">Attaque-défense</button>
         <button id="passer-tour" type="button">Passer le tour</button>
         <button id="effacer-selection" type="button">Annuler la sélection</button>
       </div>
@@ -78,7 +79,7 @@
     </section>
   </main>
 
-  <dialog id="decision-campagne" aria-labelledby="titre-decision-campagne">
+  <dialog id="decision-campagne" class="dialogue" aria-labelledby="titre-decision-campagne">
     <h2 id="titre-decision-campagne">Évaluer la campagne ?</h2>
     <p id="texte-decision-campagne">Souhaitez-vous continuer la partie ou terminer la campagne pour afficher le bilan actuel ?</p>
     <div class="actions-campagne" id="actions-decision-campagne">
@@ -91,6 +92,13 @@
     </div>
   </dialog>
 
+  <dialog id="attaque-defense-dialogue" class="dialogue" aria-labelledby="titre-attaque-defense">
+    <h2 id="titre-attaque-defense">Attaque-défense</h2>
+    <p>Une Planète attaque avec ses liaisons spatiales ; elle se défend avec tout son réseau si elle est reliée à son Centre, sinon avec ses liaisons spatiales.</p>
+    <p>Une Station spatiale attaque avec tout son réseau si elle est reliée à son Centre, sinon avec ses liaisons spatiales ; elle se défend avec ses liaisons spatiales.</p>
+    <form method="dialog" class="actions-campagne"><button type="submit">Fermer</button></form>
+  </dialog>
+
   <script src="config.js"></script>
   <script src="game-state.js"></script>
   <script src="network-engine.js"></script>
@@ -98,6 +106,9 @@
   <script src="renderer.js"></script>
   <script src="ai.js"></script>
   <script src="app.js"></script>
+  <script>
+    document.getElementById('attaque-defense').addEventListener('click', () => document.getElementById('attaque-defense-dialogue').showModal());
+  </script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
