@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INTERGALACTIQUE — prototype de réseaux</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="barre-haute">
+    <div>
+      <h1>INTERGALACTIQUE <span>prototype du moteur</span></h1>
+      <p id="statut" role="status">Préparation de la galaxie…</p>
+    </div>
+    <div class="scores" aria-label="Scores potentiels">
+      <span class="bleu">Zarkon : <output id="score-blue">0</output></span>
+      <span class="rouge">Kryssar : <output id="score-red">0</output></span>
+      <span>Tour : <strong id="joueur-actif" class="bleu">Zarkon</strong></span>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panneau" aria-label="Paramètres de la galaxie">
+      <h2>Paramètres</h2>
+      <label>Largeur <input id="largeur" type="number" min="7" max="30" value="10"></label>
+      <label>Hauteur <input id="hauteur" type="number" min="7" max="30" value="10"></label>
+      <label>Planètes bleues <input id="planetes-blue" type="number" min="0" max="100" value="3"></label>
+      <label>Planètes rouges <input id="planetes-red" type="number" min="0" max="100" value="3"></label>
+      <label>Planètes vertes <input id="planetes-green" type="number" min="0" max="100" value="3"></label>
+      <hr>
+      <label>Valeur Centre <input id="valeur-centre" type="number" min="0" step="0.5" value="5"></label>
+      <label>Valeur Planète <input id="valeur-planete" type="number" min="0" step="0.5" value="3"></label>
+      <label>Valeur Station <input id="valeur-station" type="number" min="0" step="0.5" value="1"></label>
+      <button id="nouvelle-galaxie" type="button">Nouvelle galaxie</button>
+      <p class="aide">Cliquez une possession, puis un voisin. Une case libre crée une Station ; une possession alliée est reliée ; une possession adverse est attaquée. Une diagonale relie les coins opposés d’un carré allié complet.</p>
+    </aside>
+
+    <section class="zone-jeu" aria-label="Grille galactique">
+      <div class="outils">
+        <button id="passer-tour" type="button">Passer le tour</button>
+        <button id="effacer-selection" type="button">Annuler la sélection</button>
+      </div>
+      <svg id="grille" viewBox="0 0 1000 1000" role="img" aria-label="Grille des réseaux galactiques"></svg>
+      <section class="legende" aria-label="Légende">
+        <span><i class="symbole centre bleu"></i> Centre galactique</span>
+        <span><i class="symbole planete bleu"></i> Planète</span>
+        <span><i class="symbole station bleu"></i> Station</span>
+        <span><i class="symbole planete vert"></i> Planète neutre</span>
+      </section>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="game-state.js"></script>
+  <script src="network-engine.js"></script>
+  <script src="rules.js"></script>
+  <script src="renderer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
