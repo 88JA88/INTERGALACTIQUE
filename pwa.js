@@ -34,9 +34,6 @@
     }
 
     const registration = await navigator.serviceWorker.register('./service-worker.js');
-    if (registration.waiting) offerUpdate(registration);
-    else if (!confirmationPending) showNotice('Version à jour.');
-
     registration.addEventListener('updatefound', () => {
       const worker = registration.installing;
       if (!worker) return;
@@ -44,6 +41,10 @@
         if (worker.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(registration);
       });
     });
+
+    await registration.update();
+    if (registration.waiting) offerUpdate(registration);
+    else if (!confirmationPending) showNotice('Version à jour.');
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (reloading) return;
