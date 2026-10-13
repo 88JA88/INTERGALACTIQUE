@@ -13,6 +13,7 @@
   let ambientTimer = null;
   let cometTimer = null;
   let cometCycleStarted = false;
+  let captureLayer = null;
   function element(name, attributes = {}) {
     const node = document.createElementNS(NS, name);
     Object.entries(attributes).forEach(([name, value]) => node.setAttribute(name, value));
@@ -40,6 +41,7 @@
   }
   function drawGrid(state) {
     const size = canvasSize(state);
+    if (!captureLayer) captureLayer = element('g', { class: 'capture-effects', 'pointer-events': 'none' });
     svg.setAttribute('viewBox', `0 0 ${size.width} ${size.height}`);
     svg.setAttribute('width', size.width);
     svg.setAttribute('height', size.height);
@@ -199,13 +201,33 @@
     if (!effect?.owner) return;
     const p = point(state, effect);
     const color = COLORS[effect.owner];
+    const waveRadius = effect.type === 'planet' ? 145 : 82;
+    const wave = element('g', { class: 'capture-wave', 'pointer-events': 'none' });
+    const rings = [];
+    for (let index = 0; index < 3; index += 1) {
+      const ring = element('circle', { cx: p.x, cy: p.y, r: 8, fill: 'none', stroke: color, 'stroke-width': effect.type === 'planet' ? 4 : 3, opacity: 0 });
+      wave.append(ring);
+      rings.push({ element: ring, offset: index * 0.12 });
+    }
+    captureLayer.append(wave);
     const layer = element('g', { class: 'battle-effects', 'pointer-events': 'none' });
     const glow = element('circle', { cx: p.x, cy: p.y, r: 12, fill: color, opacity: 0 });
     glow.append(animate({ attributeName: 'r', from: 12, to: 52, dur: '.95s', fill: 'freeze' }));
     glow.append(animate({ attributeName: 'opacity', values: '0;.42;0', dur: '.95s', fill: 'freeze' }));
     layer.append(glow);
-    svg.append(layer);
-    spawnGravityWave(state, effect.x, effect.y, color);
+    captureLayer.append(layer);
+    const startedAt = performance.now();
+    function animateCapture(now) {
+      const elapsed = now - startedAt;
+      rings.forEach(({ element: ring, offset }) => {
+        const progress = Math.max(0, Math.min(1, (elapsed / 3000 - offset) / (1 - offset)));
+        ring.setAttribute('r', 8 + (waveRadius - 8) * progress);
+        ring.setAttribute('opacity', Math.sin(Math.PI * progress) * 0.72);
+      });
+      if (elapsed < 3000 && wave.isConnected) requestAnimationFrame(animateCapture);
+      else wave.remove();
+    }
+    requestAnimationFrame(animateCapture);
     setTimeout(() => layer.remove(), 1200);
   }
   function draw(state) {
@@ -224,6 +246,11 @@
         event.preventDefault();
         event.stopPropagation();
         globalThis.IntergalactiqueApp.showNetworkValue(link.id);
+      });
+      hitZone.addEventListener('dblclick', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        globalThis.IntergalactiqueApp.undoPendingAction(link.id);
       });
       links.append(hitZone);
       links.append(element('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'link-visible', stroke: COLORS[link.owner] }));
@@ -310,6 +337,7 @@
     }
     svg.append(crossings);
     drawConstellationStars(state);
+    svg.append(captureLayer);
   }
   globalThis.GameRenderer = Object.freeze({ draw, playBattleEffect, startCometCycle, resetCometCycle, COLORS });
 })();

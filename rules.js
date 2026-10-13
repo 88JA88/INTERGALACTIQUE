@@ -66,7 +66,11 @@
     planet.owner = source.owner;
     planet.created = false;
     addLink(state, source.id, planet.id, source.owner);
-    return { ok: true, message: 'Planète verte conquise.' };
+    return {
+      ok: true,
+      visualEffect: { owner: source.owner, x: planet.x, y: planet.y, type: planet.type },
+      message: 'Planète verte conquise.'
+    };
   }
 
   function removeOldAttachments(state, target) {
@@ -123,7 +127,7 @@
       const centerCapture = source.type === 'center'
         ? winner ? targetLinkedToCenter ? ' Le Centre galactique attaquant est capturé par un réseau relié à son Centre.' : ' Le Centre galactique attaquant est capturé : son camp ne possède plus de Centre.' : ' Le Centre galactique attaquant est capturé, mais le réseau vainqueur n’est pas relié à son Centre : la partie continue.'
         : '';
-      return { ok: true, winner, visualEffect: { owner: target.owner, x: target.x, y: target.y }, message: `Attaque perdue — ${label} : ${battle.attack} contre ${battle.defense}. La possession attaquante est conquise et perd ses liaisons spatiales.${centerCapture}${disappearance}` };
+      return { ok: true, winner, visualEffect: { owner: target.owner, x: source.x, y: source.y, type: source.type }, message: `Attaque perdue — ${label} : ${battle.attack} contre ${battle.defense}. La possession attaquante est conquise et perd ses liaisons spatiales.${centerCapture}${disappearance}` };
     }
     removeOldAttachments(state, target);
     target.owner = source.owner;
@@ -136,7 +140,7 @@
     const centerCapture = target.type === 'center'
       ? winner ? sourceLinkedToCenter ? ' Centre galactique adverse capturé par un réseau relié à son Centre.' : ' Centre galactique adverse capturé : son camp ne possède plus de Centre.' : ' Centre galactique adverse capturé, mais le réseau attaquant n’est pas relié à son Centre : la partie continue.'
       : '';
-    return { ok: true, winner, visualEffect: { owner: source.owner, x: target.x, y: target.y }, message: `Victoire — ${label} : ${battle.attack} contre ${battle.defense}. Les anciennes liaisons spatiales sont supprimées.${centerCapture}${disappearance}` };
+    return { ok: true, winner, visualEffect: { owner: source.owner, x: target.x, y: target.y, type: target.type }, message: `Victoire — ${label} : ${battle.attack} contre ${battle.defense}. Les anciennes liaisons spatiales sont supprimées.${centerCapture}${disappearance}` };
   }
 
   function performMove(state, sourceId, targetId) {

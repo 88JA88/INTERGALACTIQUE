@@ -69,14 +69,14 @@
 
     <section class="zone-jeu" aria-label="Grille galactique">
       <div class="outils">
+        <button id="notice" type="button">Notice</button>
         <button id="attaque-defense" type="button">Attaque-défense</button>
-        <button id="passer-tour" type="button">Passer le tour</button>
-        <button id="effacer-selection" type="button">Annuler la sélection</button>
       </div>
       <svg id="grille" viewBox="0 0 1000 1000" role="img" aria-label="Grille des réseaux galactiques"></svg>
       <section class="legende" aria-label="Légende">
         <span><i class="symbole centre bleu"></i> Centre galactique</span>
-        <span><i class="symbole planete bleu"></i> Planète</span>
+        <span><i class="symbole planete bleu"></i> Planète bleue</span>
+        <span><i class="symbole planete rouge"></i> Planète rouge</span>
         <span><i class="symbole station bleu"></i> Station</span>
         <span><i class="symbole planete vert"></i> Planète neutre</span>
       </section>
@@ -103,6 +103,29 @@
     <form method="dialog" class="actions-campagne"><button type="submit">Fermer</button></form>
   </dialog>
 
+  <dialog id="notice-dialogue" class="dialogue" aria-labelledby="titre-notice">
+    <h2 id="titre-notice">Notice</h2>
+    <h3>Victoire</h3>
+    <p>La victoire est acquise en capturant le Centre galactique de l’adversaire, avec une planète ou une station reliée à son Centre galactique.</p>
+    <h3>Actions possibles</h3>
+    <ul>
+      <li><strong>Créer une Station et sa liaison spatiale :</strong> glisser-déposer une possession alliée vers un croisement libre voisin.</li>
+      <li><strong>Conquérir une Planète verte :</strong> glisser-déposer une possession alliée vers la Planète verte voisine.</li>
+      <li><strong>Relier deux possessions alliées :</strong> glisser-déposer l’une vers l’autre.</li>
+      <li><strong>Relier en diagonale avec une Planète ou une Station :</strong> les quatre coins du carré doivent être alliés.</li>
+      <li><strong>Attaquer une possession adverse :</strong> glisser-déposer une possession alliée vers elle.</li>
+      <li><strong>Créer ou attaquer en diagonale avec le Centre :</strong> glisser-déposer le Centre vers l’un de ses quatre voisins diagonaux.</li>
+      <li><strong>Annuler le dernier coup avant le tour adverse :</strong> pendant les 2 secondes d’attente, double-cliquez sur la nouvelle liaison spatiale.</li>
+      <li><strong>Déplacer le Centre (saut) :</strong> clic gauche sur votre Centre, puis clic gauche sur un croisement libre voisin, orthogonal ou diagonal.</li>
+      <li><strong>Afficher la valeur d’un Centre, d’une Planète ou d’une Station :</strong> simple clic gauche.</li>
+      <li><strong>Afficher la valeur d’un réseau :</strong> clic gauche ou droit sur une de ses liaisons spatiales.</li>
+      <li><strong>Lire les règles de combat :</strong> bouton <strong>Attaque-défense</strong>.</li>
+      <li><strong>Créer une nouvelle partie :</strong> bouton <strong>Nouvelle galaxie</strong>.</li>
+      <li><strong>Mettre l’application à jour :</strong> lorsque le message l’indique, bouton <strong>Actualiser l’application</strong>.</li>
+    </ul>
+    <form method="dialog" class="actions-campagne"><button type="submit">Fermer</button></form>
+  </dialog>
+
   <script src="config.js"></script>
   <script src="game-state.js"></script>
   <script src="network-engine.js"></script>
@@ -112,6 +135,7 @@
   <script src="app.js"></script>
   <script src="pwa.js"></script>
   <script>
+    document.getElementById('notice').addEventListener('click', () => document.getElementById('notice-dialogue').showModal());
     document.getElementById('attaque-defense').addEventListener('click', () => document.getElementById('attaque-defense-dialogue').showModal());
   </script>
 </body>

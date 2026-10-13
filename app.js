@@ -3,6 +3,7 @@
   let state;
   let campaignEnded = false;
   let aiTimer = null;
+  let pendingUndo = null;
   let centerJumpId = null;
   let statusTone = null;
   const status = document.getElementById('statut');
@@ -72,21 +73,49 @@
     status.className = '';
     status.textContent = state.lastMessage || `Au tour de ${activeLabel.textContent}.`;
     const computerTurn = isComputerTurn();
-    document.getElementById('passer-tour').disabled = campaignEnded || computerTurn;
-    document.getElementById('effacer-selection').disabled = campaignEnded || computerTurn;
     document.getElementById('evaluer-campagne').disabled = campaignEnded || computerTurn;
   }
   function isComputerTurn() { return !campaignEnded && state?.config.playerMode === 'computer' && state.activePlayer === 'red'; }
+  function snapshotState() {
+    return {
+      pieces: new Map([...state.pieces].map(([id, piece]) => [id, { ...piece }])),
+      links: new Map([...state.links].map(([id, link]) => [id, { ...link }])),
+      activePlayer: state.activePlayer,
+      movesPlayed: state.movesPlayed,
+      selectedId: state.selectedId,
+      lastMessage: state.lastMessage
+    };
+  }
+  function restoreState(snapshot) {
+    state.pieces = new Map([...snapshot.pieces].map(([id, piece]) => [id, { ...piece }]));
+    state.links = new Map([...snapshot.links].map(([id, link]) => [id, { ...link }]));
+    state.activePlayer = snapshot.activePlayer;
+    state.movesPlayed = snapshot.movesPlayed;
+    state.selectedId = snapshot.selectedId;
+    state.lastMessage = snapshot.lastMessage;
+  }
+  function rememberUndo(snapshot) {
+    const createdLink = [...state.links.keys()].find(id => !snapshot.links.has(id));
+    if (createdLink && isComputerTurn()) pendingUndo = { snapshot, linkId: createdLink };
+  }
+  function performPlayerAction(action) {
+    const snapshot = snapshotState();
+    finishAction(action(), snapshot);
+  }
   function scheduleComputerMove() {
     if (!isComputerTurn() || aiTimer) return;
-    state.lastMessage = 'Kryssar prépare son coup…';
+    state.lastMessage = pendingUndo
+      ? 'Kryssar joue dans 2 secondes. Double-cliquez sur la nouvelle liaison spatiale pour annuler votre coup.'
+      : 'Kryssar prépare son coup…';
     update();
     aiTimer = setTimeout(() => {
       aiTimer = null;
+      pendingUndo = null;
       playComputerMove();
-    }, 450);
+    }, 2000);
   }
-  function passTurn(message = 'Tour passé.') {
+  function advanceTurn(message) {
+    pendingUndo = null;
     state.selectedId = null;
     centerJumpId = null;
     statusTone = null;
@@ -99,15 +128,16 @@
   function playComputerMove() {
     if (!isComputerTurn()) return;
     const action = IntergalactiqueAI.chooseAction(state, 'red');
-    if (!action) { passTurn('Kryssar ne dispose d’aucune action et passe son tour.'); return; }
+    if (!action) { advanceTurn('Kryssar ne dispose d’aucune action et passe son tour.'); return; }
     const result = action.kind === 'move-center'
       ? GameRules.moveCenter(state, action.sourceId, action.targetId)
       : GameRules.performMove(state, action.sourceId, action.targetId);
-    if (!result.ok) { passTurn('Kryssar ne peut pas réaliser son action et passe son tour.'); return; }
+    if (!result.ok) { advanceTurn('Kryssar ne peut pas réaliser son action et passe son tour.'); return; }
     finishAction(result);
   }
   function newGalaxy() {
     clearTimeout(aiTimer); aiTimer = null;
+    pendingUndo = null;
     centerJumpId = null;
     statusTone = null;
     GameRenderer.resetCometCycle();
@@ -121,7 +151,7 @@
       GameRenderer.startCometCycle();
     } catch (error) { status.textContent = error.message; }
   }
-  function finishAction(result) {
+  function finishAction(result, undoSnapshot = null) {
     state.selectedId = null;
     centerJumpId = null;
     statusTone = null;
@@ -130,6 +160,7 @@
       GameRenderer.startCometCycle();
       if (result.winner) {
         clearTimeout(aiTimer); aiTimer = null;
+        pendingUndo = null;
         campaignEnded = true;
         state.movesPlayed = 0;
         const winnerName = result.winner === 'blue' ? 'Zarkon de Véga' : 'Kryssar d’Andromède';
@@ -147,6 +178,7 @@
       } else {
         state.lastMessage += ` ${state.config.movesPerTurn - state.movesPlayed} coup restant.`;
       }
+      if (undoSnapshot) rememberUndo(undoSnapshot);
     }
     update();
     GameRenderer.playBattleEffect(state, result.visualEffect);
@@ -170,7 +202,7 @@
     if (centerJumpId) {
       const sourceId = centerJumpId;
       centerJumpId = null;
-      finishAction(GameRules.moveCenter(state, sourceId, targetId));
+      performPlayerAction(() => GameRules.moveCenter(state, sourceId, targetId));
       return;
     }
     if (!state.selectedId) {
@@ -194,7 +226,7 @@
       update();
       return;
     }
-    finishAction(GameRules.performMove(state, state.selectedId, targetId));
+    performPlayerAction(() => GameRules.performMove(state, state.selectedId, targetId));
   }
   function pointValueText(piece) {
     const label = piece.type === 'center' ? 'Centre galactique' : piece.type === 'planet' ? 'Planète' : 'Station';
@@ -243,9 +275,22 @@
   function dragPiece(sourceId, targetId) {
     if (campaignEnded || sourceId === targetId) return;
     if (isComputerTurn()) { state.lastMessage = 'Kryssar joue actuellement.'; update(); return; }
-    finishAction(GameRules.performMove(state, sourceId, targetId));
+    performPlayerAction(() => GameRules.performMove(state, sourceId, targetId));
   }
-  function moveCenter(centerId, targetId) { if (!campaignEnded && !isComputerTurn()) finishAction(GameRules.moveCenter(state, centerId, targetId)); }
+  function moveCenter(centerId, targetId) {
+    if (!campaignEnded && !isComputerTurn()) performPlayerAction(() => GameRules.moveCenter(state, centerId, targetId));
+  }
+  function undoPendingAction(linkId) {
+    if (!pendingUndo || pendingUndo.linkId !== linkId || !isComputerTurn()) return;
+    clearTimeout(aiTimer);
+    aiTimer = null;
+    restoreState(pendingUndo.snapshot);
+    pendingUndo = null;
+    centerJumpId = null;
+    statusTone = null;
+    state.lastMessage = 'Coup annulé. À vous de jouer.';
+    update();
+  }
   function showNetworkValue(linkId) {
     const link = state.links.get(linkId);
     const start = link && state.pieces.get(link.a);
@@ -265,6 +310,7 @@
   }
   function finishCampaign() {
     clearTimeout(aiTimer); aiTimer = null;
+    pendingUndo = null;
     campaignEnded = true;
     state.selectedId = null;
     const scores = NetworkEngine.potentialScores(state);
@@ -317,8 +363,6 @@
   document.getElementById('continuer-campagne').addEventListener('click', () => document.getElementById('decision-campagne').close());
   document.getElementById('terminer-campagne').addEventListener('click', finishCampaign);
   document.getElementById('fermer-bilan').addEventListener('click', () => document.getElementById('decision-campagne').close());
-  document.getElementById('passer-tour').addEventListener('click', () => { if (campaignEnded || isComputerTurn()) return; passTurn(); });
-  document.getElementById('effacer-selection').addEventListener('click', () => { state.selectedId = null; centerJumpId = null; statusTone = null; state.lastMessage = 'Sélection annulée.'; update(); });
-  globalThis.IntergalactiqueApp = Object.freeze({ selectPiece, selectCrossing, armCenterJump, hasCenterJump, shouldUseDragDrop, dragPiece, moveCenter, showNetworkValue, showStationValue });
+  globalThis.IntergalactiqueApp = Object.freeze({ selectPiece, selectCrossing, armCenterJump, hasCenterJump, shouldUseDragDrop, dragPiece, moveCenter, undoPendingAction, showNetworkValue, showStationValue });
   newGalaxy();
 })();
